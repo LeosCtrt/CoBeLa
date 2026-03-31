@@ -1,0 +1,15 @@
+# CoBELa requirements
+# PyTorch 2.x + CUDA should be pre-installed (Kaggle/Colab provide this)
+torch>=2.0
+torchvision>=0.15
+numpy
+scipy
+pillow
+tqdm
+omegaconf
+ninja
+pyspng
+pytorch-fid
+lmdb
+gdown
+matplotlib

@@ -1,0 +1,65 @@
+# CoBELa configuration for CUB-200-2011 + StyleGAN2
+# Following the same setup as CB-AE for fair comparison
+
+dataset:
+  name: cub
+  resolution: 256
+
+generator:
+  type: stylegan2
+  weights: checkpoints/stylegan2-cub-256x256.pkl
+  z_dim: 512
+  w_dim: 512
+
+pseudolabeler:
+  type: supervised    # ResNet50-based supervised classifier
+  arch: resnet50
+  weights_dir: checkpoints/cub_rn50_conclsf
+
+concepts:
+  # K=10 balanced concepts, same as CB-AE paper
+  names:
+    - has_size::small_(5_-_9_in)
+    - has_shape::perching-like
+    - has_breast_pattern::solid
+    - has_bill_color::black
+    - has_bill_length::shorter_than_head
+    - has_wing_color::black
+    - has_belly_pattern::solid
+    - has_bill_shape::all-purpose
+    - has_upperparts_color::black
+    - has_underparts_color::white
+  num_concepts: 10
+
+energy_network:
+  hidden_dim: 512
+  concept_embed_dim: 128
+  time_embed_dim: 128
+  num_res_blocks: 2
+
+noise_schedule:
+  type: cosine
+  max_timesteps: 1000
+
+training:
+  epochs: 50
+  batch_size: 16
+  lr: 1.0e-4
+  optimizer: adam
+  lambda_score: 1.0
+  lambda_concept: 1.0e-3
+  num_samples_per_epoch: 30000
+  grad_clip: 1.0
+  save_every: 10
+  log_every: 100
+
+sampling:
+  Ts: 400
+  ddim_steps: 50
+  w_pos: 1.0
+  w_neg: -0.001
+
+evaluation:
+  num_samples: 5000
+  ca_threshold: 0.5
+  seed: 42

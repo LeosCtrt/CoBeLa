@@ -1,0 +1,63 @@
+# CoBELa configuration for CelebA-HQ + StyleGAN2
+
+dataset:
+  name: celebahq
+  resolution: 256
+
+generator:
+  type: stylegan2
+  weights: checkpoints/stylegan2-celebahq-256x256.pkl
+  z_dim: 512
+  w_dim: 512
+
+pseudolabeler:
+  type: supervised
+  arch: resnet18
+  # Classifiers are flat in checkpoints/ as:
+  #   celebahq_{ConceptName}_rn18_conclsf.pth
+  weights_dir: checkpoints
+
+concepts:
+  names:
+    - Smiling
+    - Male
+    - Heavy_Makeup
+    - Mouth_Slightly_Open
+    - Attractive
+    - Wearing_Lipstick
+    - High_Cheekbones
+    - Arched_Eyebrows
+  num_concepts: 8
+
+energy_network:
+  hidden_dim: 512
+  concept_embed_dim: 128
+  time_embed_dim: 128
+  num_res_blocks: 2
+
+noise_schedule:
+  type: cosine
+  max_timesteps: 1000
+
+training:
+  epochs: 50
+  batch_size: 16
+  lr: 1.0e-4
+  optimizer: adam
+  lambda_score: 1.0
+  lambda_concept: 1.0e-3
+  num_samples_per_epoch: 30000
+  grad_clip: 1.0
+  save_every: 10
+  log_every: 100
+
+sampling:
+  Ts: 400
+  ddim_steps: 50
+  w_pos: 1.0
+  w_neg: -0.001
+
+evaluation:
+  num_samples: 5000
+  ca_threshold: 0.5
+  seed: 42
