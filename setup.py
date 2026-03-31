@@ -118,7 +118,7 @@ def download_weights(skip_cub=False):
             },
             {
                 "name": "ResNet50 CUB classifiers",
-                "filename": "cub_has_size::small_(5_-_9_in)_rn50_conclsf.pth",  # check file
+                "filename": "cub_Black_bill_color_rn50_conclsf.pth",  # check file
                 "cmd_zip": ["gdown", "--id", "1vW5Q41FGHXdTqbraz54AXQ2uoBKispLD", "-O"],
                 "zip": True,
             },
@@ -219,6 +219,8 @@ def main():
     parser.add_argument("--skip-cub", action="store_true", help="Skip CUB weights")
     parser.add_argument("--copy-vendor", type=str, default=None,
                         help="Path to CB-AE repo clone to copy dnnlib/ and torch_utils/")
+    parser.add_argument("--auto-vendor", action="store_true",
+                        help="Auto-clone CB-AE repo to /tmp, copy vendor files, clean up")
     args = parser.parse_args()
 
     if args.check:
@@ -226,8 +228,24 @@ def main():
         verify()
         return
 
+    # Handle vendor files
+    vendor_ok = os.path.exists(os.path.join(PROJECT_ROOT, "dnnlib", "util.py"))
     if args.copy_vendor:
         copy_vendor(args.copy_vendor)
+    elif args.auto_vendor or not vendor_ok:
+        print("[vendor] Auto-cloning CB-AE repo to copy dnnlib/ and torch_utils/...")
+        import shutil
+        tmp_repo = "/tmp/cbae_repo"
+        if os.path.exists(tmp_repo):
+            shutil.rmtree(tmp_repo)
+        subprocess.run([
+            "git", "clone", "--depth", "1",
+            "https://github.com/Trustworthy-ML-Lab/posthoc-generative-cbm.git",
+            tmp_repo,
+        ], check=True)
+        copy_vendor(tmp_repo)
+        shutil.rmtree(tmp_repo)
+        print("[OK] Vendor files copied and temp repo cleaned up.")
 
     install_deps()
     apply_patches()
