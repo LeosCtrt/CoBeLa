@@ -10,6 +10,11 @@ generator:
   z_dim: 512
   w_dim: 512
 
+latent_space:
+  mode: single   # single | subset | full
+  single_index: 0
+  subset_indices: [8, 9, 10, 11, 12, 13]
+
 pseudolabeler:
   type: supervised
   arch: resnet18

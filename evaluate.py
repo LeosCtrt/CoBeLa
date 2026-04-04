@@ -35,6 +35,7 @@ import cobela
 cobela.patch_stylegan2_ops()
 
 from cobela.energy_network import EnergyNetwork
+from cobela.latent_space import resolve_latent_config
 from cobela.noise_schedule import CosineNoiseSchedule
 from cobela.ddim_sampler import concept_guided_sample, generate_with_negation
 from cobela.stylegan2_wrapper import load_stylegan2, MappingWrapper, SynthesisWrapper
@@ -43,14 +44,21 @@ from cobela.pseudolabeler import PseudoLabeler
 
 # ── Load model from checkpoint ────────────────────────────────────────
 
-def load_cobela(ckpt_path, device="cuda"):
+def load_cobela(ckpt_path, gen_info, device="cuda"):
     """Load a trained CoBELa energy network."""
     ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
     cfg = ckpt.get("config", {})
     en_cfg = cfg.get("energy_network", {})
+    latent_cfg = ckpt.get("latent_space", None)
+    if latent_cfg is None:
+        latent_cfg = resolve_latent_config(
+            cfg.get("latent_space", None),
+            num_ws=gen_info["num_ws"],
+            w_dim=gen_info["w_dim"],
+        )
 
     energy_net = EnergyNetwork(
-        latent_dim=en_cfg.get("latent_dim", 512),
+        latent_dim=latent_cfg["latent_dim"],
         num_concepts=cfg.get("concepts", {}).get("num_concepts", 8),
         concept_embed_dim=en_cfg.get("concept_embed_dim", 128),
         time_embed_dim=en_cfg.get("time_embed_dim", 128),
@@ -63,14 +71,19 @@ def load_cobela(ckpt_path, device="cuda"):
 
     epoch = ckpt.get("epoch", "?")
     print(f"[model] Loaded from {ckpt_path} (epoch {epoch})")
-    return energy_net
+    print(
+        f"[model] latent mode={latent_cfg['mode']} "
+        f"indices={latent_cfg['selected_indices']} "
+        f"latent_dim={latent_cfg['latent_dim']}"
+    )
+    return energy_net, latent_cfg
 
 
 # ── Concept Accuracy evaluation ───────────────────────────────────────
 
 @torch.no_grad()
 def evaluate_concept_accuracy(
-    energy_net, g1, g2, pseudolabeler, noise_schedule,
+    energy_net, g1, g2, pseudolabeler, noise_schedule, latent_config,
     num_samples, batch_size, Ts, ddim_steps, seed, save_dir, device,
 ):
     """Generate images and compute concept accuracy."""
@@ -89,7 +102,7 @@ def evaluate_concept_accuracy(
 
         images, _, scores = concept_guided_sample(
             energy_net, g1, g2, noise_schedule,
-            z=z, Ts=Ts, ddim_steps=ddim_steps, device=device,
+            z=z, Ts=Ts, ddim_steps=ddim_steps, latent_config=latent_config, device=device,
         )
         labels = pseudolabeler(images)
 
@@ -160,7 +173,7 @@ def compute_fid(gen_img_dir, ref_img_dir, G, num_samples, device):
 
 # ── Intervention visualization ────────────────────────────────────────
 
-def run_interventions(energy_net, g1, g2, noise_schedule, concept_names, output_dir, device):
+def run_interventions(energy_net, g1, g2, noise_schedule, latent_config, concept_names, output_dir, device):
     """Generate intervention visualization (Fig. 3 style)."""
     os.makedirs(output_dir, exist_ok=True)
     torch.manual_seed(123)
@@ -178,12 +191,12 @@ def run_interventions(energy_net, g1, g2, noise_schedule, concept_names, output_
 
             # Original
             img_orig, _, scores_orig = concept_guided_sample(
-                energy_net, g1, g2, noise_schedule, z=z, device=device,
+                energy_net, g1, g2, noise_schedule, z=z, latent_config=latent_config, device=device,
             )
             # Negated
             img_neg, _, scores_neg = generate_with_negation(
                 energy_net, g1, g2, noise_schedule,
-                negate_concepts=[negate_k], z=z, device=device,
+                negate_concepts=[negate_k], z=z, latent_config=latent_config, device=device,
             )
             all_imgs.extend([img_orig[0], img_neg[0]])
 
@@ -234,7 +247,7 @@ def main():
     )
 
     # Load CoBELa
-    energy_net = load_cobela(args.checkpoint, device=device)
+    energy_net, latent_cfg = load_cobela(args.checkpoint, gen_info, device=device)
     noise_schedule = CosineNoiseSchedule(max_timesteps=cfg.noise_schedule.max_timesteps)
 
     # Eval params
@@ -255,6 +268,7 @@ def main():
 
     ca, per_concept = evaluate_concept_accuracy(
         energy_net, g1, g2, M, noise_schedule,
+        latent_config=latent_cfg,
         num_samples=num_samples,
         batch_size=batch_size,
         Ts=Ts,
@@ -287,7 +301,7 @@ def main():
         print(f"  Generating concept interventions")
         print(f"{'='*60}\n")
         intv_dir = os.path.join(output_base, "interventions")
-        run_interventions(energy_net, g1, g2, noise_schedule, concept_names, intv_dir, device)
+        run_interventions(energy_net, g1, g2, noise_schedule, latent_cfg, concept_names, intv_dir, device)
 
     # ── Summary ──
     print(f"\n{'='*60}")

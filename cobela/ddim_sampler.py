@@ -6,6 +6,7 @@ DDIM-based denoising where the noise predictor is the energy gradient:
 """
 
 import torch
+from cobela.latent_space import extract_energy_latent, inject_energy_latent
 from cobela.noise_schedule import CosineNoiseSchedule
 
 
@@ -22,6 +23,7 @@ def concept_guided_sample(
     w_pos: float = 1.0,
     w_neg: float = -0.001,
     intervene_concepts: dict = None,
+    latent_config: dict | None = None,
     device: str = "cuda",
 ):
     """
@@ -39,6 +41,7 @@ def concept_guided_sample(
         w_pos:              positive weight (default 1.0)
         w_neg:              negative weight for negation (default -0.001)
         intervene_concepts: dict {concept_index: desired_value (0 or 1)}
+        latent_config:      latent-space selection config from resolve_latent_config()
         device:             target device
 
     Returns:
@@ -64,7 +67,9 @@ def concept_guided_sample(
 
     with torch.no_grad():
         w_latent = g1(z)           # (batch, num_ws, w_dim)
-        v = w_latent[:, 0, :]     # (batch, 512) W space
+        if latent_config is None:
+            raise ValueError("concept_guided_sample requires a latent_config")
+        v = extract_energy_latent(w_latent, latent_config)
 
     # Noise the clean latent at Ts (Eq. 9)
     ab_Ts = noise_schedule.get_alpha_bar(torch.tensor([Ts], device=device))
@@ -103,9 +108,8 @@ def concept_guided_sample(
 
     v0_final = vt
 
-    # Generate image: broadcast v0 to W+ space then run g2
-    num_ws = w_latent.shape[1]
-    w_final = v0_final.unsqueeze(1).expand(-1, num_ws, -1)
+    # Rebuild the full W+ tensor according to the selected latent-space mode.
+    w_final = inject_energy_latent(w_latent, v0_final, latent_config)
     with torch.no_grad():
         images = g2(w_final)
 
@@ -121,12 +125,12 @@ def concept_guided_sample(
 def generate_with_negation(
     energy_net, g1, g2, noise_schedule,
     negate_concepts: list,
-    z=None, batch_size=4, Ts=400, ddim_steps=50, device="cuda",
+    z=None, batch_size=4, Ts=400, ddim_steps=50, latent_config=None, device="cuda",
 ):
     """Generate while negating specified concept indices."""
     intervene = {k: 0 for k in negate_concepts}
     return concept_guided_sample(
         energy_net, g1, g2, noise_schedule,
         z=z, batch_size=batch_size, Ts=Ts, ddim_steps=ddim_steps,
-        intervene_concepts=intervene, device=device,
+        intervene_concepts=intervene, latent_config=latent_config, device=device,
     )

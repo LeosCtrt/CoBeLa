@@ -30,6 +30,7 @@ import cobela  # applies numpy patches, sys.path, warnings
 cobela.patch_stylegan2_ops()
 
 from cobela.energy_network import EnergyNetwork
+from cobela.latent_space import extract_energy_latent, resolve_latent_config
 from cobela.noise_schedule import CosineNoiseSchedule
 from cobela.losses import cobela_loss
 from cobela.stylegan2_wrapper import load_stylegan2
@@ -61,8 +62,13 @@ def train(args):
     )
 
     # ── Build energy network ──
+    latent_cfg = resolve_latent_config(
+        cfg.get("latent_space", None),
+        num_ws=gen_info["num_ws"],
+        w_dim=gen_info["w_dim"],
+    )
     energy_net = EnergyNetwork(
-        latent_dim=gen_info["w_dim"],
+        latent_dim=latent_cfg["latent_dim"],
         num_concepts=cfg.concepts.num_concepts,
         concept_embed_dim=cfg.energy_network.concept_embed_dim,
         time_embed_dim=cfg.energy_network.time_embed_dim,
@@ -103,6 +109,11 @@ def train(args):
     print(f"\n[train] {args.dataset}: {epochs} epochs × {steps_per_epoch} steps, "
           f"batch_size={batch_size}, lr={cfg.training.lr}")
     print(f"[train] λ_score={lambda_score}, λ_concept={lambda_concept}")
+    print(
+        f"[train] latent mode={latent_cfg['mode']} "
+        f"indices={latent_cfg['selected_indices']} "
+        f"latent_dim={latent_cfg['latent_dim']}"
+    )
     if args.quick:
         print("[train] ⚡ Quick mode enabled (2 epochs, 50 steps)")
 
@@ -119,7 +130,7 @@ def train(args):
             z = torch.randn(batch_size, gen_info["z_dim"], device=device)
             with torch.no_grad():
                 w = g1(z)
-                v = w[:, 0, :].clone()
+                v = extract_energy_latent(w, latent_cfg).clone()
                 imgs = g2(w)
                 pseudo_labels = M(imgs)
 
@@ -166,6 +177,7 @@ def train(args):
                 "model_state_dict": energy_net.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
                 "config": OmegaConf.to_container(cfg),
+                "latent_space": latent_cfg,
                 "losses": all_losses,
             }, ckpt_path)
             print(f"  → Saved {ckpt_path}")
@@ -177,6 +189,7 @@ def train(args):
         "model_state_dict": energy_net.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
         "config": OmegaConf.to_container(cfg),
+        "latent_space": latent_cfg,
         "losses": all_losses,
     }, final_path)
     print(f"\n[train] Done! Final checkpoint: {final_path}")
