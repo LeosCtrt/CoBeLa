@@ -37,7 +37,7 @@ from cobela.pseudolabeler import PseudoLabeler
 
 
 def train(args):
-    device = args.device if torch.cuda.is_available() else "cpu"
+    device = args.device if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 
     # ── Load config ──
     config_path = os.path.join(PROJECT_ROOT, "configs", f"{args.dataset}.yaml")
