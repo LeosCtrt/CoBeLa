@@ -28,7 +28,7 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from torchvision.utils import save_image, make_grid
+from torchvision.utils import save_image
 from omegaconf import OmegaConf
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -56,146 +56,30 @@ def _tensor_to_image(image: torch.Tensor) -> np.ndarray:
     return image
 
 
-def _plot_image_and_scores(image: torch.Tensor, scores: torch.Tensor, concept_names, title: str, output_path: str):
-    scores = scores.detach().cpu().numpy()
-    image_np = _tensor_to_image(image)
-
-    fig, axes = plt.subplots(1, 2, figsize=(8, 3.5), gridspec_kw={"width_ratios": [1.0, 1.15]})
-    axes[0].imshow(image_np)
-    axes[0].axis("off")
-    axes[0].set_title(title)
-
-    y = np.arange(len(concept_names))
-    axes[1].barh(y, scores, color=plt.cm.Pastel1(np.linspace(0, 1, len(concept_names))))
-    axes[1].set_yticks(y, concept_names)
-    axes[1].invert_yaxis()
-    axes[1].set_xlim(0.0, 1.0)
-    axes[1].set_xlabel("concept scores")
-    axes[1].set_title("Scores")
-
-    fig.tight_layout()
-    fig.savefig(output_path, dpi=160, bbox_inches="tight")
-    plt.close(fig)
-
-
-def _plot_intervention_comparison(
-    original_image: torch.Tensor,
-    original_scores: torch.Tensor,
-    intervened_image: torch.Tensor,
-    intervened_scores: torch.Tensor,
+def _plot_top3_intervention_comparison(
+    images: list[torch.Tensor],
+    scores: list[torch.Tensor],
+    score_concept_indices: list[int],
     concept_names,
-    intervention_label: str,
+    titles: list[str],
     output_path: str,
 ):
-    original_scores = original_scores.detach().cpu().numpy()
-    intervened_scores = intervened_scores.detach().cpu().numpy()
-    original_np = _tensor_to_image(original_image)
-    intervened_np = _tensor_to_image(intervened_image)
+    fig, axes = plt.subplots(2, 3, figsize=(11.5, 6.2), gridspec_kw={"height_ratios": [1.3, 1.0]})
+    colors = plt.cm.Pastel1(np.linspace(0, 1, len(score_concept_indices)))
+    selected_names = [concept_names[index] for index in score_concept_indices]
+    y = np.arange(len(score_concept_indices))
 
-    fig, axes = plt.subplots(1, 4, figsize=(14, 3.6), gridspec_kw={"width_ratios": [1.0, 1.1, 1.0, 1.1]})
+    for column in range(3):
+        axes[0, column].imshow(_tensor_to_image(images[column]))
+        axes[0, column].axis("off")
+        axes[0, column].set_title(titles[column])
 
-    axes[0].imshow(original_np)
-    axes[0].axis("off")
-    axes[0].set_title("Original")
-
-    y = np.arange(len(concept_names))
-    colors = plt.cm.Pastel1(np.linspace(0, 1, len(concept_names)))
-    axes[1].barh(y, original_scores, color=colors)
-    axes[1].set_yticks(y, concept_names)
-    axes[1].invert_yaxis()
-    axes[1].set_xlim(0.0, 1.0)
-    axes[1].set_xlabel("concept scores")
-    axes[1].set_title("Original scores")
-
-    axes[2].imshow(intervened_np)
-    axes[2].axis("off")
-    axes[2].set_title(intervention_label)
-
-    axes[3].barh(y, intervened_scores, color=colors)
-    axes[3].set_yticks(y, concept_names)
-    axes[3].invert_yaxis()
-    axes[3].set_xlim(0.0, 1.0)
-    axes[3].set_xlabel("concept scores")
-    axes[3].set_title("Intervened scores")
-
-    fig.tight_layout()
-    fig.savefig(output_path, dpi=160, bbox_inches="tight")
-    plt.close(fig)
-
-
-def _plot_paper_style_overview(
-    energy_net,
-    g1,
-    g2,
-    noise_schedule,
-    latent_config,
-    concept_names,
-    output_path: str,
-    device: str,
-    n_rows: int = 2,
-    n_interventions: int = 2,
-):
-    """
-    Create a compact figure with one original image per row, the associated
-    concept scores, and several intervention results from the same latent.
-    """
-    selected_indices = list(range(min(n_interventions, len(concept_names))))
-    if len(selected_indices) == 0:
-        return
-
-    fig, axes = plt.subplots(
-        n_rows,
-        2 + len(selected_indices),
-        figsize=(3.2 * (2 + len(selected_indices)), 3.3 * n_rows),
-        gridspec_kw={"width_ratios": [1.0, 1.15] + [1.0] * len(selected_indices)},
-    )
-    if n_rows == 1:
-        axes = np.expand_dims(axes, axis=0)
-
-    colors = plt.cm.Pastel1(np.linspace(0, 1, len(concept_names)))
-
-    for row in range(n_rows):
-        z = torch.randn(1, g1.z_dim, device=device)
-        image_orig, _, scores_orig = concept_guided_sample(
-            energy_net,
-            g1,
-            g2,
-            noise_schedule,
-            z=z,
-            latent_config=latent_config,
-            device=device,
-        )
-
-        axes[row, 0].imshow(_tensor_to_image(image_orig[0]))
-        axes[row, 0].axis("off")
-        if row == 0:
-            axes[row, 0].set_title("Original")
-
-        orig_scores_np = scores_orig[0].detach().cpu().numpy()
-        y = np.arange(len(concept_names))
-        axes[row, 1].barh(y, orig_scores_np, color=colors)
-        axes[row, 1].set_yticks(y, concept_names)
-        axes[row, 1].invert_yaxis()
-        axes[row, 1].set_xlim(0.0, 1.0)
-        axes[row, 1].set_xlabel("concept scores")
-        if row == 0:
-            axes[row, 1].set_title("Concepts")
-
-        for col_offset, concept_idx in enumerate(selected_indices, start=2):
-            image_neg, _, scores_neg = generate_with_negation(
-                energy_net,
-                g1,
-                g2,
-                noise_schedule,
-                negate_concepts=[concept_idx],
-                z=z,
-                latent_config=latent_config,
-                device=device,
-            )
-            axes[row, col_offset].imshow(_tensor_to_image(image_neg[0]))
-            axes[row, col_offset].axis("off")
-            if row == 0:
-                axes[row, col_offset].set_title(f"Negate {concept_names[concept_idx]}")
+        score_values = scores[column].detach().cpu().numpy()[score_concept_indices]
+        axes[1, column].barh(y, score_values, color=colors)
+        axes[1, column].set_yticks(y, selected_names)
+        axes[1, column].invert_yaxis()
+        axes[1, column].set_xlim(0.0, 1.0)
+        axes[1, column].set_xlabel("concept scores")
 
     fig.tight_layout()
     fig.savefig(output_path, dpi=180, bbox_inches="tight")
@@ -342,78 +226,79 @@ def run_interventions(energy_net, g1, g2, noise_schedule, latent_config, concept
     n_samples = 4
     summaries = []
 
-    for negate_k in range(min(K, 4)):  # show first 4 concepts
-        name = concept_names[negate_k]
-        print(f"  Intervention: negating '{name}'...")
+    for i in range(n_samples):
+        z = torch.randn(1, g1.z_dim, device=device)
+        img_orig, _, scores_orig = concept_guided_sample(
+            energy_net, g1, g2, noise_schedule, z=z, latent_config=latent_config, device=device,
+        )
 
-        all_imgs = []
-        for i in range(n_samples):
-            z = torch.randn(1, g1.z_dim, device=device)
+        topk = torch.topk(scores_orig[0], k=min(3, K))
+        top3_indices = topk.indices.tolist()
+        random_order = torch.randperm(len(top3_indices)).tolist()
+        single_idx = top3_indices[random_order[0]]
+        pair_indices = [top3_indices[random_order[0]], top3_indices[random_order[1]]] if len(top3_indices) > 1 else [top3_indices[0]]
 
-            # Original
-            img_orig, _, scores_orig = concept_guided_sample(
-                energy_net, g1, g2, noise_schedule, z=z, latent_config=latent_config, device=device,
-            )
-            # Negated
-            img_neg, _, scores_neg = generate_with_negation(
-                energy_net, g1, g2, noise_schedule,
-                negate_concepts=[negate_k], z=z, latent_config=latent_config, device=device,
-            )
-            all_imgs.extend([img_orig[0], img_neg[0]])
+        img_single, _, scores_single = generate_with_negation(
+            energy_net,
+            g1,
+            g2,
+            noise_schedule,
+            negate_concepts=[single_idx],
+            z=z,
+            latent_config=latent_config,
+            device=device,
+        )
+        img_pair, _, scores_pair = generate_with_negation(
+            energy_net,
+            g1,
+            g2,
+            noise_schedule,
+            negate_concepts=pair_indices,
+            z=z,
+            latent_config=latent_config,
+            device=device,
+        )
 
-            sample_stem = f"negate_{_slugify(name)}_sample_{i:02d}"
-            sample_dir = os.path.join(output_dir, sample_stem)
-            os.makedirs(sample_dir, exist_ok=True)
-            _plot_image_and_scores(
-                img_orig[0],
-                scores_orig[0],
-                concept_names,
-                title="Original",
-                output_path=os.path.join(sample_dir, "original_scores.png"),
-            )
-            _plot_intervention_comparison(
-                img_orig[0],
-                scores_orig[0],
-                img_neg[0],
-                scores_neg[0],
-                concept_names,
-                intervention_label=f"Negate {name}",
-                output_path=os.path.join(sample_dir, "comparison.png"),
-            )
-            save_image((img_orig + 1) / 2, os.path.join(sample_dir, "original.png"))
-            save_image((img_neg + 1) / 2, os.path.join(sample_dir, "intervened.png"))
+        sample_stem = f"sample_{i:02d}"
+        sample_dir = os.path.join(output_dir, sample_stem)
+        os.makedirs(sample_dir, exist_ok=True)
 
-            summaries.append(
-                {
-                    "sample": sample_stem,
-                    "sample_dir": sample_dir,
-                    "negated_concepts": [name],
-                    "original_scores": {
-                        concept_names[idx]: float(scores_orig[0, idx].item()) for idx in range(K)
-                    },
-                    "intervened_scores": {
-                        concept_names[idx]: float(scores_neg[0, idx].item()) for idx in range(K)
-                    },
-                }
-            )
+        _plot_top3_intervention_comparison(
+            images=[img_orig[0], img_single[0], img_pair[0]],
+            scores=[scores_orig[0], scores_single[0], scores_pair[0]],
+            score_concept_indices=top3_indices,
+            concept_names=concept_names,
+            titles=[
+                "Original",
+                f"Negate {_slugify(concept_names[single_idx]).replace('_', ' ')}",
+                "Negate " + " + ".join(
+                    _slugify(concept_names[index]).replace("_", " ") for index in pair_indices
+                ),
+            ],
+            output_path=os.path.join(sample_dir, "comparison.png"),
+        )
 
-        grid = make_grid([(img + 1) / 2 for img in all_imgs], nrow=2)
-        save_image(grid, os.path.join(output_dir, f"intervene_negate_{name}.png"))
+        summaries.append(
+            {
+                "sample": sample_stem,
+                "sample_dir": sample_dir,
+                "top3_concepts": [concept_names[index] for index in top3_indices],
+                "single_negation": concept_names[single_idx],
+                "pair_negation": [concept_names[index] for index in pair_indices],
+                "original_scores": {
+                    concept_names[idx]: float(scores_orig[0, idx].item()) for idx in top3_indices
+                },
+                "single_negation_scores": {
+                    concept_names[idx]: float(scores_single[0, idx].item()) for idx in top3_indices
+                },
+                "pair_negation_scores": {
+                    concept_names[idx]: float(scores_pair[0, idx].item()) for idx in top3_indices
+                },
+            }
+        )
 
     with open(os.path.join(output_dir, "intervention_scores.json"), "w", encoding="utf-8") as handle:
         json.dump(summaries, handle, indent=2)
-    _plot_paper_style_overview(
-        energy_net,
-        g1,
-        g2,
-        noise_schedule,
-        latent_config,
-        concept_names,
-        output_path=os.path.join(output_dir, "paper_style_overview.png"),
-        device=device,
-        n_rows=2,
-        n_interventions=2,
-    )
     print(f"  Saved to {output_dir}/")
 
 
