@@ -362,12 +362,14 @@ def run_interventions(energy_net, g1, g2, noise_schedule, latent_config, concept
             all_imgs.extend([img_orig[0], img_neg[0]])
 
             sample_stem = f"negate_{_slugify(name)}_sample_{i:02d}"
+            sample_dir = os.path.join(output_dir, sample_stem)
+            os.makedirs(sample_dir, exist_ok=True)
             _plot_image_and_scores(
                 img_orig[0],
                 scores_orig[0],
                 concept_names,
                 title="Original",
-                output_path=os.path.join(output_dir, f"{sample_stem}_original_scores.png"),
+                output_path=os.path.join(sample_dir, "original_scores.png"),
             )
             _plot_intervention_comparison(
                 img_orig[0],
@@ -376,14 +378,15 @@ def run_interventions(energy_net, g1, g2, noise_schedule, latent_config, concept
                 scores_neg[0],
                 concept_names,
                 intervention_label=f"Negate {name}",
-                output_path=os.path.join(output_dir, f"{sample_stem}_comparison.png"),
+                output_path=os.path.join(sample_dir, "comparison.png"),
             )
-            save_image((img_orig + 1) / 2, os.path.join(output_dir, f"{sample_stem}_original.png"))
-            save_image((img_neg + 1) / 2, os.path.join(output_dir, f"{sample_stem}_intervened.png"))
+            save_image((img_orig + 1) / 2, os.path.join(sample_dir, "original.png"))
+            save_image((img_neg + 1) / 2, os.path.join(sample_dir, "intervened.png"))
 
             summaries.append(
                 {
                     "sample": sample_stem,
+                    "sample_dir": sample_dir,
                     "negated_concepts": [name],
                     "original_scores": {
                         concept_names[idx]: float(scores_orig[0, idx].item()) for idx in range(K)
