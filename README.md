@@ -24,4 +24,5 @@ python train.py --dataset cub                        # CUB dataset
 python evaluate.py --dataset celebahq --checkpoint checkpoints/cobela/celebahq_final.pt
 python evaluate.py --dataset cub --checkpoint checkpoints/cobela/cub_final.pt
 python evaluate.py --dataset celebahq --checkpoint checkpoints/cobela/celebahq_final.pt --fid
+python evaluate.py --dataset celebahq --checkpoint checkpoints/cobela/celebahq_final.pt --intervene --intervene-num-samples 4 --intervene-random
 ```

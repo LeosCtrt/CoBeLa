@@ -217,16 +217,27 @@ def compute_fid(gen_img_dir, ref_img_dir, G, num_samples, device):
 
 # ── Intervention visualization ────────────────────────────────────────
 
-def run_interventions(energy_net, g1, g2, noise_schedule, latent_config, concept_names, output_dir, device):
+def run_interventions(
+    energy_net,
+    g1,
+    g2,
+    noise_schedule,
+    latent_config,
+    concept_names,
+    output_dir,
+    device,
+    num_samples: int = 4,
+    randomize: bool = False,
+):
     """Generate intervention visualization (Fig. 3 style)."""
     os.makedirs(output_dir, exist_ok=True)
-    torch.manual_seed(123)
+    if not randomize:
+        torch.manual_seed(123)
 
     K = len(concept_names)
-    n_samples = 4
     summaries = []
 
-    for i in range(n_samples):
+    for i in range(num_samples):
         z = torch.randn(1, g1.z_dim, device=device)
         img_orig, _, scores_orig = concept_guided_sample(
             energy_net, g1, g2, noise_schedule, z=z, latent_config=latent_config, device=device,
@@ -234,9 +245,13 @@ def run_interventions(energy_net, g1, g2, noise_schedule, latent_config, concept
 
         topk = torch.topk(scores_orig[0], k=min(3, K))
         top3_indices = topk.indices.tolist()
-        random_order = torch.randperm(len(top3_indices)).tolist()
-        single_idx = top3_indices[random_order[0]]
-        pair_indices = [top3_indices[random_order[0]], top3_indices[random_order[1]]] if len(top3_indices) > 1 else [top3_indices[0]]
+        if randomize:
+            random_order = torch.randperm(len(top3_indices)).tolist()
+            single_idx = top3_indices[random_order[0]]
+            pair_indices = [top3_indices[random_order[0]], top3_indices[random_order[1]]] if len(top3_indices) > 1 else [top3_indices[0]]
+        else:
+            single_idx = top3_indices[0]
+            pair_indices = top3_indices[:2] if len(top3_indices) > 1 else [top3_indices[0]]
 
         img_single, _, scores_single = generate_with_negation(
             energy_net,
@@ -319,6 +334,10 @@ def main():
                         help="Quick test (100 samples)")
     parser.add_argument("--num-samples", type=int, default=None,
                         help="Override number of eval samples")
+    parser.add_argument("--intervene-num-samples", type=int, default=4,
+                        help="Number of intervention samples to generate when using --intervene")
+    parser.add_argument("--intervene-random", action="store_true",
+                        help="Randomly choose the single and pair negations among the top-3 concepts")
     parser.add_argument("--device", type=str, default="cuda")
     args = parser.parse_args()
 
@@ -398,7 +417,18 @@ def main():
         print(f"  Generating concept interventions")
         print(f"{'='*60}\n")
         intv_dir = os.path.join(output_base, "interventions")
-        run_interventions(energy_net, g1, g2, noise_schedule, latent_cfg, concept_names, intv_dir, device)
+        run_interventions(
+            energy_net,
+            g1,
+            g2,
+            noise_schedule,
+            latent_cfg,
+            concept_names,
+            intv_dir,
+            device,
+            num_samples=args.intervene_num_samples,
+            randomize=args.intervene_random,
+        )
 
     # ── Summary ──
     print(f"\n{'='*60}")
