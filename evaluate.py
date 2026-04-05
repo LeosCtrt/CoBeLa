@@ -260,8 +260,9 @@ def run_interventions(energy_net, g1, g2, noise_schedule, latent_config, concept
         )
 
         sample_stem = f"sample_{i:02d}"
-        sample_dir = os.path.join(output_dir, sample_stem)
-        os.makedirs(sample_dir, exist_ok=True)
+        single_slug = _slugify(concept_names[single_idx])
+        pair_slug = "_".join(_slugify(concept_names[index]) for index in pair_indices)
+        comparison_name = f"neg_{single_slug}_neg_{pair_slug}.png"
 
         _plot_top3_intervention_comparison(
             images=[img_orig[0], img_single[0], img_pair[0]],
@@ -275,13 +276,13 @@ def run_interventions(energy_net, g1, g2, noise_schedule, latent_config, concept
                     _slugify(concept_names[index]).replace("_", " ") for index in pair_indices
                 ),
             ],
-            output_path=os.path.join(sample_dir, "comparison.png"),
+            output_path=os.path.join(output_dir, comparison_name),
         )
 
         summaries.append(
             {
                 "sample": sample_stem,
-                "sample_dir": sample_dir,
+                "comparison_path": os.path.join(output_dir, comparison_name),
                 "top3_concepts": [concept_names[index] for index in top3_indices],
                 "single_negation": concept_names[single_idx],
                 "pair_negation": [concept_names[index] for index in pair_indices],
