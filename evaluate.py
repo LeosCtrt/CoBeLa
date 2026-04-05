@@ -287,7 +287,7 @@ def run_interventions(
             titles=[
                 "Original",
                 f"Negate {_slugify(concept_names[single_idx]).replace('_', ' ')}",
-                "Negate " + " + ".join(
+                "Negate " + " and ".join(
                     _slugify(concept_names[index]).replace("_", " ") for index in pair_indices
                 ),
             ],
