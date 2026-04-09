@@ -23,17 +23,18 @@ pseudolabeler:
 
 concepts:
   # K=10 balanced concepts, same as CB-AE paper
+  concepts:
   names:
-    - has_size::small_(5_-_9_in)
-    - has_shape::perching-like
-    - has_breast_pattern::solid
-    - has_bill_color::black
-    - has_bill_length::shorter_than_head
-    - has_wing_color::black
-    - has_belly_pattern::solid
-    - has_bill_shape::all-purpose
-    - has_upperparts_color::black
-    - has_underparts_color::white
+    - Small_size_5_to_9_inches
+    - Perching_like_shape
+    - Solid_breast_pattern
+    - Black_bill_color
+    - Bill_length_shorter_than_head
+    - Black_wing_color
+    - Solid_belly_pattern
+    - All_purpose_bill_shape
+    - Black_upperparts_color
+    - White_underparts_color
   num_concepts: 10
 
 energy_network:
