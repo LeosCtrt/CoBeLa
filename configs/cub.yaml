@@ -19,7 +19,7 @@ latent_space:
 pseudolabeler:
   type: supervised    # ResNet50-based supervised classifier
   arch: resnet50
-  weights_dir: checkpoints/cub_rn50_conclsf
+  weights_dir: checkpoints
 
 concepts:
   # K=10 balanced concepts, same as CB-AE paper
