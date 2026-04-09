@@ -54,9 +54,7 @@ def train(args):
     if args.lambda_concept is not None:
         cfg.training.lambda_concept = args.lambda_concept
     if args.latent_mode is not None:
-    cfg.latent_space.mode = args.latent_mode
-    if args.arch is not None:
-        cfg.pseudolabeler.arch = args.arch
+        cfg.latent_space.mode = args.latent_mode
     print(f"[config] Loaded {config_path}")
 
     # ── Resolve paths ──
@@ -224,7 +222,6 @@ def main():
     parser.add_argument("--lambda-score", type=float, default=1.0)
     parser.add_argument("--lambda-concept", type=float, default=1e-3)
     parser.add_argument("--latent-mode", type=str, default=single, choices=["single", "subset", "full"])
-    parser.add_argument("--arch", type=str, default=resnet18, choices=["resnet18", "resnet50"])
     args = parser.parse_args()
     train(args)
 
