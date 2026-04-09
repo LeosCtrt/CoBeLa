@@ -221,7 +221,7 @@ def main():
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--lambda-score", type=float, default=1.0)
     parser.add_argument("--lambda-concept", type=float, default=1e-3)
-    parser.add_argument("--latent-mode", type=str, default=single, choices=["single", "subset", "full"])
+    parser.add_argument("--latent-mode", type=str, default="single", choices=["single", "subset", "full"])
     args = parser.parse_args()
     train(args)
 
