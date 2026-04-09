@@ -43,6 +43,16 @@ def train(args):
     # ── Load config ──
     config_path = os.path.join(PROJECT_ROOT, "configs", f"{args.dataset}.yaml")
     cfg = OmegaConf.load(config_path)
+    if args.batch_size is not None:
+        cfg.training.batch_size = args.batch_size
+    if args.lr is not None:
+        cfg.training.lr = args.lr
+    if args.epochs is not None:
+        cfg.training.epochs = args.epochs
+    if args.lambda_score is not None:
+        cfg.training.lambda_score = args.lambda_score
+    if args.lambda_concept is not None:
+        cfg.training.lambda_concept = args.lambda_concept
     print(f"[config] Loaded {config_path}")
 
     # ── Resolve paths ──
@@ -204,6 +214,11 @@ def main():
     parser.add_argument("--resume", type=str, default=None,
                         help="Resume from checkpoint path")
     parser.add_argument("--device", type=str, default="cuda")
+    parser.add_argument("--batch-size", type=int, default=16)
+    parser.add_argument("--lr", type=float, default=0.0001)
+    parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument("--lambda-score", type=float, default=1.0)
+    parser.add_argument("--lambda-concept", type=float, default=1e-3)
     args = parser.parse_args()
     train(args)
 
