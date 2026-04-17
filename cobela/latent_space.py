@@ -38,7 +38,7 @@ def resolve_latent_config(cfg, num_ws: int, w_dim: int) -> dict:
     if mode == "single":
         if not 0 <= single_index < num_ws:
             raise ValueError(f"single_index must be in [0, {num_ws - 1}], got {single_index}")
-        selected_indices = [single_index]
+        selected_indices = [single_index] # CoBELa models a single style vector, but we will broadcast it to all num_ws slots when injecting back into the generator as for CB-AE. This is a design choice to keep the number of parameters low and maintain interpretability, while still allowing the model to learn a single style vector that can influence all synthesis layers.
         latent_dim = w_dim
     elif mode == "subset":
         if subset_indices is None:
