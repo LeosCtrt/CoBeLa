@@ -1,17 +1,3 @@
-#!/usr/bin/env python3
-"""
-CoBELa Environment Setup
-=========================
-Installs dependencies, downloads pretrained weights, patches StyleGAN2
-for modern PyTorch, and verifies the full pipeline.
-
-Usage:
-    python setup.py                  # full setup
-    python setup.py --check          # verify only
-    python setup.py --skip-cub       # skip CUB weights
-    python setup.py --copy-vendor /path/to/cbae_repo   # auto-copy dnnlib + torch_utils
-"""
-
 import os
 import sys
 import subprocess
