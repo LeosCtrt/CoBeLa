@@ -1,16 +1,3 @@
-#!/usr/bin/env python3
-"""
-CoBELa Training Script
-=======================
-Train the energy network Eθ on synthetic data from a frozen StyleGAN2.
-
-Usage:
-    python train.py --dataset celebahq                    # full training
-    python train.py --dataset celebahq --quick            # 2 epochs test
-    python train.py --dataset cub                         # CUB dataset
-    python train.py --dataset celebahq --resume checkpoints/cobela/celebahq_epoch10.pt
-"""
-
 import os
 import sys
 import time
