@@ -1,23 +1,3 @@
-#!/usr/bin/env python3
-"""
-CoBELa Evaluation Script
-==========================
-Evaluate concept accuracy (CA) and optionally FID on CelebA-HQ or CUB.
-
-Usage:
-    # Concept accuracy only
-    python evaluate.py --dataset celebahq --checkpoint checkpoints/cobela/celebahq_final.pt
-
-    # With FID computation
-    python evaluate.py --dataset celebahq --checkpoint checkpoints/cobela/celebahq_final.pt --fid
-
-    # Quick test (100 samples)
-    python evaluate.py --dataset celebahq --checkpoint checkpoints/cobela/celebahq_final.pt --quick
-
-    # With concept intervention demo (saves visualizations)
-    python evaluate.py --dataset celebahq --checkpoint checkpoints/cobela/celebahq_final.pt --intervene
-"""
-
 import os
 import sys
 import argparse
